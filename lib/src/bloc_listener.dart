@@ -43,8 +43,8 @@ class BlocListener<B extends StateStreamable<S>, S> extends StatefulComponent
 
 class _BlocListenerState<B extends StateStreamable<S>, S>
     extends State<BlocListener<B, S>> {
-  late B _bloc;
-  late S _state;
+  B? _bloc;
+  S? _state;
   StreamSubscription<S>? _subscription;
 
   @override
@@ -56,37 +56,36 @@ class _BlocListenerState<B extends StateStreamable<S>, S>
   @override
   void didUpdateComponent(covariant BlocListener<B, S> oldComponent) {
     super.didUpdateComponent(oldComponent);
-    // If the bloc reference changed, resubscribe
     if (oldComponent.bloc != component.bloc) {
       _resolveBloc(force: true);
     }
   }
 
   void _resolveBloc({bool force = false}) {
-    final newBloc = component.bloc ?? BlocProvider.of<B>(context);
-
-    // If nothing changed, do nothing
+    final newBloc = component.bloc ?? _safeBlocLookup(context);
+    if (newBloc == null) return; // provider not mounted yet
     if (!force && identical(_bloc, newBloc)) return;
 
-    // Cancel previous subscription
     _subscription?.cancel();
-
-    // Update bloc and initial state
     _bloc = newBloc;
-    _state = _bloc.state;
+    _state ??= _bloc!.state;
 
-    // Subscribe to state changes
-    _subscription = _bloc.stream.listen((nextState) {
+    _subscription = _bloc!.stream.listen((nextState) {
       final shouldListen =
-          component.listenWhen?.call(_state, nextState) ?? true;
-
+          component.listenWhen?.call(_state as S, nextState) ?? true;
       if (shouldListen) {
         component.listener(context, nextState);
       }
-
-      // Always update internal state
       _state = nextState;
     });
+  }
+
+  B? _safeBlocLookup(BuildContext context) {
+    try {
+      return BlocProvider.of<B>(context);
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
