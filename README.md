@@ -1,3 +1,5 @@
+[![alt text](https://github.com/kadasolutions/pdf_ocr/blob/main/image.png?raw=true)](https://www.kadasolutions.ch/?utm_source=github&utm_medium=readme&utm_campaign=pdf_ocr)
+
 # jaspr_bloc
 
 An integration library for [Jaspr](https://jaspr.site/) and [Bloc](https://bloclibrary.dev/).
