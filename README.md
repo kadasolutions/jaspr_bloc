@@ -1,40 +1,52 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
-
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
-
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
-
 # jaspr_bloc
 
-Components that make it easy to integrate blocs and cubits into Jaspr. Built to work with package:bloc.
+An integration library for [Jaspr](https://jaspr.site/) and [Bloc](https://bloclibrary.dev/).
 
-## Features
+This package provides a bridge to use the BLoC state management pattern within Jaspr web applications. The API is designed to mirror [flutter_bloc](https://pub.dev/packages/flutter_bloc), adapted for Jaspr’s component-based system.
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+## Acknowledgments
 
-## Getting started
+This package is made possible by the foundational work of:
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+- **[Jaspr](https://pub.dev/packages/jaspr)**: Created by [Kilian Schulte](https://github.com/schultek).
+- **[Bloc](https://pub.dev/packages/bloc)**: Created by [Felix Angelov](https://github.com/felangel).
 
-## Usage
+## Installation
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
+Add `jaspr_bloc` to your `pubspec.yaml`:
 
-```dart
-const like = 'sample';
+```yaml
+dependencies:
+  jaspr: ^0.22.1
+  bloc: ^9.2.0
+  jaspr_bloc:
+    git:
+      url: https://github.com/kadasolutions/jaspr_bloc.git
 ```
 
-## Additional information
+## API Overview
 
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+The library implements the following standard components and extensions:
+
+### Providers
+
+- `BlocProvider` / `BlocProvider.value`
+- `RepositoryProvider` / `RepositoryProvider.value`
+- `MultiBlocProvider`
+- `MultiRepositoryProvider`
+
+### Consumers
+
+- `BlocBuilder`
+- `BlocListener`
+- `BlocConsumer`
+- `BlocSelector`
+
+### Extensions
+
+- `context.read<B>()`
+- `context.repository<T>()`
+
+## License
+
+This project is licensed under the **Apache License 2.0**. See the `LICENSE` file for details.

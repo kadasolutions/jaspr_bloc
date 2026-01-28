@@ -1,11 +1,11 @@
 import 'package:jaspr/jaspr.dart';
 import 'package:jaspr_bloc/jaspr_bloc.dart';
 
-/// Provides multiple [BlocProvider]s at once, wrapping the [child].
+/// {@template multi_bloc_provider}
+/// Merges multiple [BlocProvider] components into one component tree.
 ///
-/// Providers are applied from last to first in the list,
-/// so the first provider in the list is the outermost.
-/// This matches the behavior of `flutter_bloc`'s MultiBlocProvider.
+/// It improves readability and eliminates the need to nest multiple [BlocProvider]s.
+/// {@endtemplate}
 class MultiBlocProvider extends StatelessComponent {
   const MultiBlocProvider({
     required this.providers,
@@ -13,17 +13,14 @@ class MultiBlocProvider extends StatelessComponent {
     super.key,
   });
 
-  /// The list of [BlocProviderItem]s to provide.
   final List<BlocProviderItem> providers;
-
-  /// The child component that will have access to the blocs.
   final Component child;
 
   @override
   Component build(BuildContext context) {
     Component tree = child;
 
-    // Wrap child with providers from last to first (same as flutter_bloc)
+    // Correctly returning a single Component tree
     for (final provider in providers.reversed) {
       tree = provider.buildWithChild(tree);
     }
