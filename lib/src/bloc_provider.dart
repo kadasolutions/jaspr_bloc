@@ -1,6 +1,8 @@
 import 'package:bloc/bloc.dart';
 import 'package:jaspr/jaspr.dart';
 
+import '_inherited_utils.dart';
+
 /// Interface for components that can be used within a `MultiBlocProvider`.
 abstract class BlocProviderItem {
   /// Wraps the given [child] with the specific bloc provider.
@@ -74,11 +76,26 @@ class BlocProvider<B extends StateStreamable<dynamic>> extends StatefulComponent
   }
 
   /// Retrieves the nearest [Bloc] of type [B] from the component tree.
-  static B of<B extends StateStreamable<dynamic>>(BuildContext context) {
-    final provider = context
-        .dependOnInheritedComponentOfExactType<_BlocInherited<B>>();
+  ///
+  /// When [listen] is `true` (the default) the calling component is registered
+  /// as a dependent of the provider and will be notified via
+  /// [State.didChangeDependencies] when the provider is swapped out.
+  ///
+  /// Pass `listen: false` for one-shot reads — for example, inside event
+  /// handlers — to avoid registering a dependency. [BlocContextX.read] uses
+  /// this internally.
+  static B of<B extends StateStreamable<dynamic>>(
+    BuildContext context, {
+    bool listen = true,
+  }) {
+    final _BlocInherited<B>? provider = listen
+        ? context.dependOnInheritedComponentOfExactType<_BlocInherited<B>>()
+        : peekInherited<_BlocInherited<B>>(context);
     if (provider == null) {
-      throw Exception('BlocProvider: $B not found in context');
+      throw Exception(
+        'BlocProvider.of<$B>: No provider found in context. '
+        'Ensure a BlocProvider<$B> exists above this component.',
+      );
     }
     return provider.bloc;
   }
@@ -130,8 +147,9 @@ class _BlocProviderState<B extends StateStreamable<dynamic>>
   @override
   void didUpdateComponent(covariant BlocProvider<B> oldComponent) {
     super.didUpdateComponent(oldComponent);
-    // Note: Re-creating blocs on component updates is generally avoided
-    // to maintain state consistency.
+    // Reset when the externally-supplied value changes so the next bloc getter
+    // call picks up the new instance. The old bloc is closed only when this
+    // provider originally created it (i.e. _shouldDispose is true).
     if (oldComponent._value != component._value) {
       if (_shouldDispose && _bloc is BlocBase) {
         (_bloc as BlocBase).close();
@@ -154,7 +172,7 @@ class _BlocProviderState<B extends StateStreamable<dynamic>>
   Component build(BuildContext context) {
     return _BlocInherited<B>(
       bloc: bloc,
-      child: component.child ?? const Component.fragment([]),
+      child: component.child ?? const Component.empty(),
     );
   }
 }

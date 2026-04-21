@@ -10,8 +10,8 @@ import 'package:jaspr_bloc/jaspr_bloc.dart';
 /// ```dart
 /// MultiRepositoryProvider(
 ///   providers: [
-///     (child) => RepositoryProvider(repository: RepoA(), child: child),
-///     (child) => RepositoryProvider(repository: RepoB(), child: child),
+///     RepositoryProvider(repository: RepoA()),
+///     RepositoryProvider(repository: RepoB()),
 ///   ],
 ///   child: MyComponent(),
 /// )
@@ -25,20 +25,20 @@ class MultiRepositoryProvider extends StatelessComponent {
     super.key,
   });
 
-  /// The list of [RepositoryProviderFactory] to be applied to the [child].
-  final List<RepositoryProviderFactory> providers;
+  /// The repository providers to apply to [child]. The first item in the list
+  /// becomes the outermost ancestor in the resulting tree.
+  final List<RepositoryProviderItem> providers;
 
   /// The component that will have access to all provided repositories.
   final Component child;
 
   @override
   Component build(BuildContext context) {
-    // We reduce the list from right to left (reversed).
-    // This ensures that the first provider in the list is the outermost
+    // Reduce right-to-left so the first provider ends up the outermost
     // ancestor in the final component tree.
     return providers.reversed.fold<Component>(
       child,
-      (previousChild, factory) => factory(previousChild),
+      (previousChild, provider) => provider.buildWithChild(previousChild),
     );
   }
 }

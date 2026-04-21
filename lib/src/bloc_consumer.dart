@@ -9,6 +9,31 @@ import 'package:jaspr_bloc/jaspr_bloc.dart';
 ///
 /// It is useful when you need to both rebuild the UI and execute side effects
 /// (like navigation or showing alerts) in response to state changes in a single [Bloc].
+///
+/// ```dart
+/// BlocConsumer<AuthCubit, AuthState>(
+///   listener: (context, state) {
+///     if (state is AuthFailure) showErrorBanner(state.message);
+///   },
+///   builder: (context, state) {
+///     return state is AuthLoading
+///         ? span([], [text('Loading…')])
+///         : span([], [text('Welcome')]);
+///   },
+/// )
+/// ```
+///
+/// Use [buildWhen] and [listenWhen] to decouple when the UI rebuilds from when
+/// side effects fire:
+///
+/// ```dart
+/// BlocConsumer<CounterCubit, int>(
+///   listenWhen: (previous, current) => current == 0,
+///   listener: (context, state) => print('Reset!'),
+///   buildWhen: (previous, current) => current.isEven,
+///   builder: (context, count) => span([], [text('$count')]),
+/// )
+/// ```
 /// {@endtemplate}
 class BlocConsumer<B extends StateStreamable<S>, S> extends StatefulComponent {
   /// {@macro bloc_consumer}
@@ -57,7 +82,7 @@ class _BlocConsumerState<B extends StateStreamable<S>, S>
   @override
   void didUpdateComponent(covariant BlocConsumer<B, S> oldComponent) {
     super.didUpdateComponent(oldComponent);
-    if (oldComponent.bloc != component.bloc) {
+    if (!identical(oldComponent.bloc, component.bloc)) {
       _resolveBloc(force: true);
     }
   }
@@ -75,6 +100,10 @@ class _BlocConsumerState<B extends StateStreamable<S>, S>
     _state = _bloc!.state;
 
     _subscription = _bloc!.stream.listen((nextState) {
+      // Guard: a stream event may already be in flight when dispose() cancels
+      // the subscription. Calling setState on an unmounted State crashes.
+      if (!mounted) return;
+
       // Logic Sync: We capture the state at the moment of emission to ensure
       // both listener and builder see a consistent 'previousState'.
       final previousState = _state;
@@ -96,11 +125,10 @@ class _BlocConsumerState<B extends StateStreamable<S>, S>
     });
   }
 
-  /// Prevents crashes by safely attempting to locate the Bloc in the tree.
   B? _safeBlocLookup(BuildContext context) {
     try {
       return BlocProvider.of<B>(context);
-    } catch (_) {
+    } on Exception {
       return null;
     }
   }
@@ -114,7 +142,12 @@ class _BlocConsumerState<B extends StateStreamable<S>, S>
 
   @override
   Component build(BuildContext context) {
-    // In Jaspr, we pass the current tracked state to the builder.
+    if (_bloc == null) {
+      throw Exception(
+        'BlocConsumer<$B, $S>: No bloc found. Either pass one via the `bloc:` '
+        'parameter, or ensure a BlocProvider<$B> exists above this component.',
+      );
+    }
     return component.builder(context, _state);
   }
 }

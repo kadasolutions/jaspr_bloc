@@ -1,5 +1,7 @@
 import 'package:jaspr/jaspr.dart';
 
+import '_inherited_utils.dart';
+
 /// Interface for components that can be used within a [MultiRepositoryProvider].
 abstract class RepositoryProviderItem {
   /// Wraps the given [child] with the specific repository provider.
@@ -20,7 +22,7 @@ class RepositoryProvider<T> extends InheritedComponent
     required this.repository,
     Component? child,
     super.key,
-  }) : super(child: child ?? const Component.fragment([]));
+  }) : super(child: child ?? const Component.empty());
 
   /// The repository instance being provided.
   final T repository;
@@ -35,12 +37,19 @@ class RepositoryProvider<T> extends InheritedComponent
     );
   }
 
-  /// Retrieves the repository of type [T] from the nearest ancestor [RepositoryProvider].
+  /// Retrieves the repository of type [T] from the nearest ancestor
+  /// [RepositoryProvider].
   ///
-  /// If the repository is not found, this will throw an [Exception].
-  static T of<T>(BuildContext context) {
-    final provider = context
-        .dependOnInheritedComponentOfExactType<RepositoryProvider<T>>();
+  /// When [listen] is `true` (the default) the calling component is registered
+  /// as a dependent and will be notified if the provided repository instance
+  /// changes. Pass `listen: false` for one-shot reads that should not
+  /// register a dependency. [BlocContextX.repository] uses this internally.
+  ///
+  /// Throws an [Exception] if no matching provider is found.
+  static T of<T>(BuildContext context, {bool listen = true}) {
+    final RepositoryProvider<T>? provider = listen
+        ? context.dependOnInheritedComponentOfExactType<RepositoryProvider<T>>()
+        : peekInherited<RepositoryProvider<T>>(context);
     if (provider == null) {
       throw Exception(
         'RepositoryProvider<$T> not found in context. '
@@ -52,7 +61,49 @@ class RepositoryProvider<T> extends InheritedComponent
 
   @override
   bool updateShouldNotify(covariant RepositoryProvider<T> oldComponent) {
-    // Identity check is usually sufficient for repositories.
+    // Repositories are compared by identity: a new instance always triggers
+    // a rebuild of dependents, even if its value is logically equivalent.
     return !identical(oldComponent.repository, repository);
   }
+}
+
+/// Migration adapter for the old `MultiRepositoryProvider` factory-function API.
+///
+/// **Deprecated.** Pass [RepositoryProvider] instances directly instead:
+///
+/// ```dart
+/// // Before (deprecated — compile warning):
+/// MultiRepositoryProvider(
+///   providers: [
+///     RepositoryProviderFactory(
+///       (child) => RepositoryProvider(repository: MyRepo(), child: child),
+///     ),
+///   ],
+///   child: child,
+/// )
+///
+/// // After (preferred):
+/// MultiRepositoryProvider(
+///   providers: [
+///     RepositoryProvider(repository: MyRepo()),
+///   ],
+///   child: child,
+/// )
+/// ```
+///
+/// Will be removed in v2.0.0.
+@Deprecated(
+  'Use RepositoryProvider(repository: ...) directly and pass it to '
+  'MultiRepositoryProvider.providers without a factory wrapper. '
+  'RepositoryProviderFactory will be removed in v2.0.0.',
+)
+class RepositoryProviderFactory implements RepositoryProviderItem {
+  // ignore: deprecated_member_use_from_same_package
+  @Deprecated('Use RepositoryProvider(repository: ...) directly.')
+  const RepositoryProviderFactory(this._factory);
+
+  final Component Function(Component child) _factory;
+
+  @override
+  Component buildWithChild(Component child) => _factory(child);
 }

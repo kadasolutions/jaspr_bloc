@@ -23,11 +23,11 @@ class BlocListener<B extends StateStreamable<S>, S> extends StatefulComponent
   /// {@macro bloc_listener}
   const BlocListener({
     required this.listener,
-    required this.child,
+    Component? child,
     this.bloc,
     this.listenWhen,
     super.key,
-  });
+  }) : child = child ?? const Component.empty();
 
   /// The [bloc] that the [BlocListener] will interact with.
   /// If omitted, [BlocListener] will automatically perform a lookup using
@@ -39,6 +39,9 @@ class BlocListener<B extends StateStreamable<S>, S> extends StatefulComponent
   final BlocComponentListener<S> listener;
 
   /// The [Component] which will be rendered.
+  ///
+  /// Defaults to an empty fragment when used inside [MultiBlocListener] where
+  /// the real child is injected via [buildWithChild].
   final Component child;
 
   /// An optional [listenWhen] can be implemented for more granular control
@@ -76,7 +79,7 @@ class _BlocListenerState<B extends StateStreamable<S>, S>
   void didUpdateComponent(covariant BlocListener<B, S> oldComponent) {
     super.didUpdateComponent(oldComponent);
     // Re-resolve if the bloc instance is replaced.
-    if (oldComponent.bloc != component.bloc) {
+    if (!identical(oldComponent.bloc, component.bloc)) {
       _resolveBloc(force: true);
     }
   }
@@ -95,6 +98,10 @@ class _BlocListenerState<B extends StateStreamable<S>, S>
     _state = _bloc!.state;
 
     _subscription = _bloc!.stream.listen((nextState) {
+      // Guard: a stream event may already be in flight when dispose() cancels
+      // the subscription. Invoking the listener with a stale context is unsafe.
+      if (!mounted) return;
+
       final previousState = _state;
 
       // Control: Evaluate whether the side effect should trigger.
@@ -110,12 +117,10 @@ class _BlocListenerState<B extends StateStreamable<S>, S>
     });
   }
 
-  /// Safety: Encapsulates provider lookup to avoid unhandled exceptions
-  /// if the Bloc is not found in the component tree.
   B? _safeBlocLookup(BuildContext context) {
     try {
       return BlocProvider.of<B>(context);
-    } catch (_) {
+    } on Exception {
       return null;
     }
   }
@@ -128,5 +133,13 @@ class _BlocListenerState<B extends StateStreamable<S>, S>
   }
 
   @override
-  Component build(BuildContext context) => component.child;
+  Component build(BuildContext context) {
+    if (_bloc == null) {
+      throw Exception(
+        'BlocListener<$B, $S>: No bloc found. Either pass one via the `bloc:` '
+        'parameter, or ensure a BlocProvider<$B> exists above this component.',
+      );
+    }
+    return component.child;
+  }
 }
