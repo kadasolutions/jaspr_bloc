@@ -18,7 +18,3 @@ typedef BlocComponentListener<S> = void Function(BuildContext context, S state);
 /// It takes the [BuildContext] and the selected [value] of type [T].
 typedef BlocComponentSelector<S, T> =
     Component Function(BuildContext context, T value);
-
-/// A function signature that takes a [child] component and returns a new
-/// component wrapping that child. Primarily used in [MultiRepositoryProvider].
-typedef RepositoryProviderFactory = Component Function(Component child);

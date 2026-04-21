@@ -72,6 +72,10 @@ class _BlocSelectorState<B extends StateStreamable<S>, S, T>
     _selected = component.selector(_bloc!.state);
 
     _subscription = _bloc!.stream.listen((nextState) {
+      // Guard: a stream event may already be in flight when dispose() cancels
+      // the subscription. Calling setState on an unmounted State crashes.
+      if (!mounted) return;
+
       final nextSelected = component.selector(nextState);
 
       // Optimization: Only trigger setState if the selected value changed.
@@ -85,11 +89,10 @@ class _BlocSelectorState<B extends StateStreamable<S>, S, T>
     });
   }
 
-  /// Safety: Prevents runtime exceptions if the Bloc is not found.
   B? _safeBlocLookup(BuildContext context) {
     try {
       return BlocProvider.of<B>(context);
-    } catch (_) {
+    } on Exception {
       return null;
     }
   }
@@ -103,8 +106,13 @@ class _BlocSelectorState<B extends StateStreamable<S>, S, T>
 
   @override
   Component build(BuildContext context) {
-    // If the component builds before the Bloc is resolved,
-    // we must ensure we don't pass a null selected value if T is non-nullable.
+    if (_bloc == null) {
+      throw Exception(
+        'BlocSelector<$B, $S, $T>: No bloc found. Either pass one via the '
+        '`bloc:` parameter, or ensure a BlocProvider<$B> exists above this '
+        'component.',
+      );
+    }
     return component.builder(context, _selected as T);
   }
 }

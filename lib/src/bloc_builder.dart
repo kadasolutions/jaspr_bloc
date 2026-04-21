@@ -9,6 +9,26 @@ import 'package:jaspr_bloc/jaspr_bloc.dart';
 ///
 /// It is the Jaspr equivalent of Flutter Bloc's `BlocBuilder`. It ensures
 /// that the UI stays in sync with the business logic provided by a [Bloc] or [Cubit].
+///
+/// The bloc is resolved from the nearest [BlocProvider] ancestor, or supplied
+/// explicitly via the [bloc] parameter:
+///
+/// ```dart
+/// BlocBuilder<CounterCubit, int>(
+///   builder: (context, count) {
+///     return span([], [text('$count')]);
+///   },
+/// )
+/// ```
+///
+/// Use [buildWhen] to skip rebuilds when only part of the state matters:
+///
+/// ```dart
+/// BlocBuilder<CounterCubit, int>(
+///   buildWhen: (previous, current) => current != previous,
+///   builder: (context, count) => span([], [text('$count')]),
+/// )
+/// ```
 /// {@endtemplate}
 class BlocBuilder<B extends StateStreamable<S>, S> extends StatefulComponent {
   /// {@macro bloc_builder}
@@ -54,7 +74,7 @@ class _BlocBuilderState<B extends StateStreamable<S>, S>
   void didUpdateComponent(covariant BlocBuilder<B, S> oldComponent) {
     super.didUpdateComponent(oldComponent);
     // If the explicit bloc instance changes, we must resubscribe.
-    if (oldComponent.bloc != component.bloc) {
+    if (!identical(oldComponent.bloc, component.bloc)) {
       _resolveBloc(force: true);
     }
   }
@@ -73,6 +93,10 @@ class _BlocBuilderState<B extends StateStreamable<S>, S>
     _state = _bloc!.state;
 
     _subscription = _bloc!.stream.listen((nextState) {
+      // Guard: a stream event may already be in flight when dispose() cancels
+      // the subscription. Calling setState on an unmounted State crashes.
+      if (!mounted) return;
+
       final previousState = _state;
 
       // Optimization: Use buildWhen to prevent unnecessary DOM diffing in Jaspr.
@@ -90,12 +114,10 @@ class _BlocBuilderState<B extends StateStreamable<S>, S>
     });
   }
 
-  /// Safely looks up a Bloc from the tree.
-  /// Wrapped in a try/catch to prevent runtime crashes if the provider is missing.
   B? _safeBlocLookup(BuildContext context) {
     try {
       return BlocProvider.of<B>(context);
-    } catch (_) {
+    } on Exception {
       return null;
     }
   }
@@ -110,6 +132,12 @@ class _BlocBuilderState<B extends StateStreamable<S>, S>
 
   @override
   Component build(BuildContext context) {
+    if (_bloc == null) {
+      throw Exception(
+        'BlocBuilder<$B, $S>: No bloc found. Either pass one via the `bloc:` '
+        'parameter, or ensure a BlocProvider<$B> exists above this component.',
+      );
+    }
     return component.builder(context, _state);
   }
 }

@@ -5,12 +5,12 @@ import 'package:jaspr_bloc/jaspr_bloc.dart';
 /// Extends [BuildContext] to provide easy access to Blocs and Repositories
 /// directly from the context.
 extension BlocContextX on BuildContext {
-  /// Looks up a [Bloc] or [Cubit] instance of type [B].
+  /// Looks up a [Bloc] or [Cubit] instance of type [B] without subscribing
+  /// the calling component to provider changes.
   ///
-  /// This is equivalent to `BlocProvider.of<B>(context)`.
-  /// It does not set up a dependency (the component won't rebuild
-  /// when the state changes), making it ideal for calling methods
-  /// in event handlers.
+  /// Equivalent to `BlocProvider.of<B>(context, listen: false)`. Use this in
+  /// event handlers and other one-shot lookups where you do not want the
+  /// component to be marked as a dependent of the provider.
   ///
   /// ```dart
   /// button(
@@ -19,17 +19,18 @@ extension BlocContextX on BuildContext {
   /// )
   /// ```
   B read<B extends StateStreamable<dynamic>>() {
-    return BlocProvider.of<B>(this);
+    return BlocProvider.of<B>(this, listen: false);
   }
 
-  /// Looks up a repository of type [T] from the nearest ancestor [RepositoryProvider].
+  /// Looks up a repository of type [T] from the nearest ancestor
+  /// [RepositoryProvider] without subscribing to changes.
   ///
-  /// This is equivalent to `RepositoryProvider.of<T>(context)`.
+  /// Equivalent to `RepositoryProvider.of<T>(context, listen: false)`.
   ///
   /// ```dart
   /// final repo = context.repository<UserRepository>();
   /// ```
   T repository<T>() {
-    return RepositoryProvider.of<T>(this);
+    return RepositoryProvider.of<T>(this, listen: false);
   }
 }
